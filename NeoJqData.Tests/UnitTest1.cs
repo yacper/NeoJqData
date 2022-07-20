@@ -1,9 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using NeoJqData;
 using NUnit.Framework;
 using RLib.Base;
 
-namespace RLib.JQData.Tests
+namespace NeoJqData.Tests
 {
     public class Tests
     {

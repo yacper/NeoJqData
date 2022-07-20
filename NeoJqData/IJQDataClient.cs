@@ -4,7 +4,7 @@
     email:		yacper@gmail.com	
 	
     purpose:
-    modifiers:	Finnhub的一个连接
+    modifiers:	JqData的client
 *********************************************************************/
 using System;
 using System.Collections.Generic;
@@ -16,9 +16,7 @@ namespace NeoJqData
 {
     public partial class JQDataClient
     {
-        public const string HostUrl = "https://finnhub.io/";
         public const string ApiUrl = "https://dataapi.joinquant.com/apis";
-        public const string WebsocketUrl = "wss://ws.finnhub.io";
 
     }
 

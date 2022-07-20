@@ -1,21 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net5.0-windows</TargetFramework>
-		<UseWPF>true</UseWPF>
-		<ApplicationIcon />
+		<TargetFramework>net6.0</TargetFramework>
 		<OutputType>Library</OutputType>
-		<StartupObject />
 		<Platforms>AnyCPU;x64</Platforms>
 	</PropertyGroup>
 
 
 	<ItemGroup>
 
-		<PackageReference Include="CsvHelper" version="27.1.1" />
 		<PackageReference Include="Flurl" version="3.0.2" />
 		<PackageReference Include="Flurl.Http" version="3.2.0" />
 		<PackageReference Include="Microsoft.Toolkit.Mvvm" Version="7.1.2" />
-		<PackageReference Include="Newtonsoft.Json" version="13.0.1" targetFramework="net461" />
+		<PackageReference Include="RLib.Base" Version="0.0.2" />
 
 	</ItemGroup>
 
