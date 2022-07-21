@@ -34,8 +34,8 @@ namespace NeoJqData
 #endregion
 
 #region Calls limitaion
-        int                 CallsPerMin { get; }                            // api calss per mit
-        int                 CallsInScope { get; }
+        //int                 CallsPerMin { get; }                            // api calss per mit
+        //int                 CallsInScope { get; }
         Task<int>           get_query_count();
 #endregion
 

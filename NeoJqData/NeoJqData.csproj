@@ -5,7 +5,7 @@
 		<Platforms>AnyCPU;x64</Platforms>
 
 		<PackageId>NeoJqData</PackageId>
-		<Version>0.0.1</Version>
+		<Version>0.0.2</Version>
 		<Authors>Rush Wang(yacper@gmail.com)</Authors>
 		<Company>Neosoft</Company>
 		<Description>聚宽JqData C# Api</Description>

@@ -13,7 +13,7 @@ namespace NeoJqData.Tests
         [OneTimeSetUp]
         public async Task Setup()
         {
-            _Client = new JQDataClient("18621301957", "Hello@123");
+            _Client = new JQDataClient("11111100068", "y4c0Nz8X");
 
             bool ret = await _Client.connect();
             Assert.AreEqual(ret, true);
@@ -38,6 +38,7 @@ namespace NeoJqData.Tests
         public async Task get_all_securities()
         {
             var rtn = await  _Client.get_all_securities(ECodeType.futures);
+
             rtn.ToExcel("D:/futures.xls");
 
         }
@@ -45,7 +46,7 @@ namespace NeoJqData.Tests
         [Test]
         public async Task get_security_info()
         {
-            var rtn = await  _Client.get_security_info("000001.XSHE");
+            SecurityInfo rtn = await  _Client.get_security_info("000001.XSHE");
 
         }
 
@@ -84,7 +85,7 @@ namespace NeoJqData.Tests
         [Test]
         public async Task get_ticks()
         {
-            var rtn = await  _Client.get_ticks("ZN2112.XSGE", ("2021/10/7").ToDateTime(), ("2021/10/9").ToDateTime());   // 主力连续合约
+            var rtn = await  _Client.get_ticks("AU1812.XSGE", ("2018/7/02").ToDateTime(), ("2018/7/03").ToDateTime());   // 主力连续合约
         }
 
         [Test]

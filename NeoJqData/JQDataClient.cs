@@ -257,6 +257,7 @@ namespace NeoJqData
                 code = code,
                 start_date = startDate.Value.ToJqDate(),
                 end_date=endDate.Value.ToJqDate(),
+                count=100,
                 token = ApiKey_
             //}).ReceiveStream();
             }).ReceiveString();

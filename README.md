@@ -1,15 +1,14 @@
 # NeoJqData
 聚宽 JqData C# Api
 
+update: 2022/7/21 经确认，聚宽http接口功能降级，主要focus在python接口，有些接口已无法从http方式取得数据，比如get_ticks.
+
 ## 0. IJQDataClient -- JqData Api Interface
 ```cs
-    public interface IJQDataClient
-    {
-        string              ApiKey { get;}
-        int                 CallsPerMin { get; }                            // api calss per mit
-        int                 CallsInScope { get; }
-
-        string              LastErrMsg { get; }
+public interface IJQDataClient
+{
+    string              ApiKey { get;}
+    string              LastErrMsg { get; }
 ...
 }
 ```
@@ -34,169 +33,67 @@ public enum EConnectionState
 ```
 ### Connect
 ```cs
-IIbClient client = new IbClient("localhost", 4002, 0, logger); // logger - can be null
-bool connected = await client.ConnectAsync();
-connected.Should().BeTrue();
+IJQDataClient _Client = new JQDataClient(user, password);
+bool ret = await _Client.connect();
+Assert.AreEqual(ret, true);
 ```
-### Disconnect
+## 2. security Management
+### Get securityInfo
 ```cs
-await client.DisconnectAsync();
-client.ConnectionState.Should().Be(EConnectionState.Disconnected);
+SecurityInfo rtn = await  _Client.get_security_info("000001.XSHE");
+rtn.Should().NotBeNull();
 ```
 
-## 2. Account Management
-### Accounts 
+### get_all_securities
 ```cs
-ReadOnlyObservableCollection<string> Accounts { get; }
-```
-### Get AccountDetails
-```cs 
-var acc = client.Accounts.FirstOrDefault();
-var ret = await client.ReqAccountDetailsAsync(acc);
-ret.Should().NotBeEmpty();
-```
-
-## 3. Contract Management
-### Get ContractDetails
-```cs
-Contract EurContract = new Contract()
+public enum ECodeType // 证券类型
 {
-    Symbol   = "EUR",
-    SecType  = ESecTypeTws.CASH.ToString(),
-    Currency = ECurrencyTws.USD.ToString(),
-    Exchange = EExchangeTws.IDEALPRO.ToString()
-};
-var ret = await client.ReqContractAsync(EurContract);
-ret.First().Should().NotBeNull();
-```
+    stock,
+    fund,
+    index,
+    futures,
+    etf,
+    lof,
+    fja,
+    fjb,
+    QDII_fund,
+    open_fund,
+    bond_fund,
+    stock_fund,
+    money_market_fund,
+    mixture_fund,
+    options
+}
 
-### Requests matching stock symbols
-```cs
-var ret = await client.ReqMatchingSymbolsAsync("MSFT");
+// 获取一个类别下的所有证券信息
+var rtn = await  _Client.get_all_securities(ECodeType.futures);
 ret.Should().NotBeEmpty();
 ```
 
-## 4. Historical Data Management
+## 3. Historical Data Management
 ### Get historical data
 ```cs
-Contract    contract = XauusdContract_CMDTY;
-DurationTws duration = new DurationTws(3, EDurationStep.D);
-DateTime    end      = 17.March(2022).At(23, 59);
+//code: 证券代码
+//count: 大于0的整数，表示获取bar的条数，不能超过5000
+//unit: bar的时间单位, 支持如下周期：1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M。其中m表示分钟，d表示天，w表示周，M表示月
+//end_date：查询的截止时间，默认是今天
+//fq_ref_date：复权基准日期，该参数为空时返回不复权数据
+Task<List<Bar>>     get_price(string code, ETimeFrame timeframe = ETimeFrame.m1, int count = 5000, DateTime? endDate = null, DateTime? fq_ref_date = null);
 
-var ret = await client.ReqHistoricalDataAsync(contract, end, duration, ETimeFrameTws.H1, EDataType.MIDPOINT);
-ret.Should().NotBeEmpty();
+//指定开始时间date和结束时间end_date时间段，获取行情数据
+//code: 证券代码
+//unit: bar的时间单位, 支持如下周期：1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M。其中m表示分钟，d表示天，w表示周，M表示月
+//date : 开始时间，不能为空，格式2018-07-03或2018-07-03 10:40:00，如果是2018-07-03则默认为2018-07-03 00:00:00
+//end_date：结束时间，不能为空，格式2018-07-03或2018-07-03 10:40:00，如果是2018-07-03则默认为2018-07-03 23:59:00
+//fq_ref_date：复权基准日期，该参数为空时返回不复权数据
+//注：当unit是1w或1M时，第一条数据是开始时间date所在的周或月的行情。当unit为分钟时，第一条数据是开始时间date所在的一个unit切片的行情。 最大获取1000个交易日数据
+Task<List<Bar>>     get_price_period(string code, ETimeFrame timeframe, DateTime date, DateTime? endDate = null, DateTime? fq_ref_date = null);
+
+Task<List<CurrentPrice>>  get_current_price(IEnumerable<string> codes); 
+
+// 需要付费
+// startdate的参数名不对，无法正确指定，目前函数有问题
+Task<List<Tick>>     get_ticks(string code, DateTime? startDate = null, DateTime? endDate = null, int count = 5000, string fields ="None",bool skip = true , bool df = false);
 ```
 
-## 5. Streaming Data
-Tws do provide a few data formats streamable, but only tick by tick data is useful really.
-### Tick by tick data format
-```cs
-public enum ETickByTickDataType
-{
-    Last,
-    AllLast,         
-    BidAsk,
-    MidPoint
-}
-```
-### Current Subscriptions
-```cs
-ReadOnlyObservableCollection<Tuple<Contract, ETickByTickDataType>> TickByTickSubscriptions { get; }
-```
-
-### Tick by tick data comming handler
-```cs
-event EventHandler<TwsEventArs<Contract, HistoricalTick>>       TickByTickMidPointEvent;
-event EventHandler<TwsEventArs<Contract, HistoricalTickLast>>   TickByTickLastEvent;
-event EventHandler<TwsEventArs<Contract, HistoricalTickLast>>   TickByTickAllLastEvent;
-event EventHandler<TwsEventArs<Contract, HistoricalTickBidAsk>> TickByTickBidAskEvent;
-```
-
-### Use case
-```cs
-Contract contract = new Contract();
-contract.Symbol   = "EUR";
-contract.SecType  = "CASH";
-contract.Currency = "USD";
-contract.Exchange = "IDEALPRO";
-
-var historicalTickBidAsks = new List<HistoricalTickBidAsk>();
-client.TickByTickBidAskEvent += (s, e) =>
-{
-    // store tickbytickdata
-    historicalTickBidAsks.Add(e.Arg2);
-    Debug.WriteLine(e.Arg2.Dump());
-};
-
-// subscribe a contract with particula tick by tick data format
-await client.SubTickByTickDataAsync(contract, ETickByTickDataType.BidAsk);
-
-client.TickByTickSubscriptions.Should().NotBeEmpty();
-historicalTickBidAsks.Should().NotBeEmpty();
-
-// cancel subsciption
-client.UnsubTickByTickData(contract, ETickByTickDataType.BidAsk);
-client.TickByTickSubscriptions.Should().BeEmpty();
-```
-
-## 6. Order Management
-### Place an order
-```cs
- // Initialize the contract
-Contract contract = new Contract();
-contract.Symbol   = "EUR";
-contract.SecType  = "CASH";
-contract.Currency = "USD";
-contract.Exchange = "IDEALPRO";
-// Initialize the order
-Order order = new Order
-{
-    Action        = "BUY",
-    OrderType     = "MKT",
-    TotalQuantity = 2000
-};
-ExecutionDetailsEventArgs details = null;
-CommissionReport          cr      = null;
-EventHandler<ExecutionDetailsEventArgs> executionDetailsEventHandler = (s, e) => { details = e; };
-EventHandler<CommissionReport>          commissionReportHandler      = (s, e) => { cr      = e; };
-// observe on order's Execution Details
-client.ExecutionDetailsEvent += executionDetailsEventHandler;
-// observe on Commission Report
-client.CommissionReportEvent += commissionReportHandler;
-
-// Place the order
-var successfullyPlaced = await client.PlaceOrderAsync(contract, order);
-// Assert
-successfullyPlaced.Should().NotBeNull();
-// a few moments later
-await Task.Delay(3000);
-details.Should().NotBeNull();
-cr.Should().NotBeNull();
-client.ExecutionDetailsEvent -= executionDetailsEventHandler;
-client.CommissionReportEvent -= commissionReportHandler;
-```
-### Requests open orders
-```cs
-var ret = await client.RequestOpenOrdersAsync();
-ret.Should().NotBeEmpty();
-```
-### Cancels a pending order
-```cs
-var ret = await client.CancelOrderAsync(successfullyPlaced.OrderId);  // orderId from the PlaceOrderAsync() return
-ret.Should().BeTrue();
-```
-## 7. Position Management
-### Request all Positions
-```cs
-List<PositionStatusEventArgs> status = new();
-EventHandler<PositionStatusEventArgs> positionStatusHandler = (s, e) => { status.Add(e); };
-client.PositionStatusEvent += positionStatusHandler;
-
-var ret = await client.RequestPositions(); // request Position will also subscribe to position change event
-ret.Should().NotBeEmpty();
-```
-
-### Unsubscribe position change event
-```cs
-client.UnsubPositions();
-```
+更多请参看unitTests.
