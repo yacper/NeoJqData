@@ -31,8 +31,8 @@ namespace NeoJqData
             CallsPerMin = callsPerMin;
         }
 
-        public string ApiKey => _ApiKey;
-        public int CallsPerMin { get; set; }
+        public string ApiKey      { get => ApiKey_; set => SetProperty(ref ApiKey_, value); }
+        public int    CallsPerMin { get; set; }
 
         public int            CallsInScope
         {
@@ -40,7 +40,7 @@ namespace NeoJqData
         }
 
         protected List<DateTime> _Calls = new List<DateTime>();
-        protected async Task _CheckCalls()
+        protected async Task CheckCallsLimitaion_()
         {
             DateTime now = DateTime.Now;
             _Calls.Add(now);
@@ -60,6 +60,9 @@ namespace NeoJqData
 
             if (_Calls.Count >= CallsPerMin)
             {
+                //CancellationTokenSource tokenSource = new CancellationTokenSource(TimeoutMilliseconds);
+                //tokenSource.Token.Register(() => { taskSource.TrySetCanceled(); });
+
                 Thread.Sleep(TimeSpan.FromMinutes(1) - (now - _Calls[0]));
             }
         }
@@ -67,18 +70,36 @@ namespace NeoJqData
 
         public string       LastErrMsg
         {
-            get { return _LastErrMsg; }
+            get { return LastErrMsg_; }
             set
             {
-                SetProperty(ref _LastErrMsg, value);
+                SetProperty(ref LastErrMsg_, value);
             }
         }
 
-        public async Task<bool>   Init()
+
+        public EConnectionState ConnectionState { get => ConnectionState_; protected set => SetProperty(ref ConnectionState_, value); }
+
+        public void CheckSystem_()
+        {
+            // 
+            if (ConnectionState != EConnectionState.Connected)
+                throw new Exception("JqData not connected!");
+
+            // check limitaion
+
+        }
+
+        public async Task<bool>   connect()
         {
             //error:auth failed
             //认证失败
 
+            //非线程安全
+            if (ConnectionState != EConnectionState.Disconnected)
+                return ConnectionState == EConnectionState.Connected;
+
+            ConnectionState = EConnectionState.Connecting;
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_token",
@@ -88,23 +109,26 @@ namespace NeoJqData
 
             if (ret.Contains("error"))
             {
+                ConnectionState = EConnectionState.Disconnected;
                 LastErrMsg = ret;
 
                 return false;
             }
 
-            _ApiKey = ret;
+            ApiKey = ret;
+            ConnectionState = EConnectionState.Connected;
             return true;
         }
 
         public async Task<int> get_query_count()
         {
+            CheckSystem_();
+
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_query_count",
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveString();
-
 
             return Convert.ToInt32(ret);
         }
@@ -116,15 +140,14 @@ namespace NeoJqData
         //date: 日期，用于获取某日期还在上市的证券信息，date为空时表示获取所有日期的标的信息
         public async Task<List<Security>> get_all_securities(ECodeType type, DateTime? date = null)
         {
-            //await _CheckCalls();
+            CheckSystem_();
 
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_all_securities",
                 code=type.ToString(),
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveStream();
-
 
             List<Security> rtn = ret.FromCsv<Security>();
 
@@ -133,13 +156,13 @@ namespace NeoJqData
       
         public async Task<SecurityInfo> get_security_info(string code)
         {
-            //await _CheckCalls();
+            CheckSystem_();
 
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_security_info",
                 code=code,
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveStream();
 
             SecurityInfo rtn = ret.FromCsv<SecurityInfo>().FirstOrDefault();
@@ -150,6 +173,8 @@ namespace NeoJqData
         public async Task<List<Bar>> get_price(string code, ETimeFrame timeframe = ETimeFrame.m1, int count = 5000,
             DateTime? endDate = null, DateTime? fq_ref_date = null)
         {
+            CheckSystem_();
+
             //code: 证券代码
             //count: 大于0的整数，表示获取bar的条数，不能超过5000
             //unit: bar的时间单位, 支持如下周期：1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M。其中m表示分钟，d表示天，w表示周，M表示月
@@ -166,7 +191,7 @@ namespace NeoJqData
                 count=count,
                 end_date=endDate.Value.ToJqDate(),
                 fq_ref_date=fq_ref_date==null?endDate.Value.ToJqDate():fq_ref_date.Value.ToJqDate(),
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveStream();
 
             List<Bar> rtn = ret.FromCsv<Bar>();
@@ -175,6 +200,8 @@ namespace NeoJqData
         }
         public async Task<List<Bar>>     get_price_period(string code, ETimeFrame timeframe, DateTime date, DateTime? endDate = null, DateTime? fq_ref_date = null)
         {
+            CheckSystem_();
+
             //指定开始时间date和结束时间end_date时间段，获取行情数据
             //code: 证券代码
             //unit: bar的时间单位, 支持如下周期：1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M。其中m表示分钟，d表示天，w表示周，M表示月
@@ -193,7 +220,7 @@ namespace NeoJqData
                 date=date.ToJqDate(),
                 end_date=endDate.Value.ToJqDate(),
                 fq_ref_date=fq_ref_date==null?endDate.Value.ToJqDate():fq_ref_date.Value.ToJqDate(),
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveStream();
 
             List<Bar> rtn = ret.FromCsv<Bar>();
@@ -203,11 +230,14 @@ namespace NeoJqData
 
         public async Task<List<CurrentPrice>> get_current_price(IEnumerable<string> codes)
         {
+
+            CheckSystem_();
+
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_current_price",
                 code= codes.Join(','),
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveStream();
 
             List<CurrentPrice> rtn = ret.FromCsv<CurrentPrice>();
@@ -219,6 +249,7 @@ namespace NeoJqData
         public async Task<List<Tick>> get_ticks(string code, DateTime? startDate = null, DateTime? endDate = null,
             int count = 5000, string fields = "None", bool skip = true, bool df = false)
         {
+            CheckSystem_();
 
             var ret = await ApiUrl.PostJsonAsync(new
             {
@@ -226,7 +257,7 @@ namespace NeoJqData
                 code = code,
                 start_date = startDate.Value.ToJqDate(),
                 end_date=endDate.Value.ToJqDate(),
-                token = _ApiKey
+                token = ApiKey_
             //}).ReceiveStream();
             }).ReceiveString();
 
@@ -245,6 +276,8 @@ namespace NeoJqData
         //date: 指定日期
         public async Task<List<string>> get_future_contracts(string code, DateTime? date = null)
         {
+            CheckSystem_();
+
             if (date == null)
                 date = DateTime.Now;
 
@@ -253,7 +286,7 @@ namespace NeoJqData
                 method = "get_future_contracts",
                 code=code,
                 date=date.Value.ToJqDate(),
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveString();
 
             List<string> rtn = ret.Split('\n').ToList();
@@ -266,11 +299,13 @@ namespace NeoJqData
         //date: 指定日期参数，获取历史上该日期的主力期货合约
         public async Task<string> get_dominant_future(string code)
         {
+            CheckSystem_();
+
             var ret = await ApiUrl.PostJsonAsync(new
             {
                 method = "get_dominant_future",
                 code=code,
-                token=_ApiKey
+                token=ApiKey_
             }).ReceiveString();
 
             return ret;
@@ -280,10 +315,11 @@ namespace NeoJqData
         #endregion
 
 
-        protected string _ApiKey;
+        protected string ApiKey_;
         protected string _Acc;
         protected string _Pwd;
 
-        protected string _LastErrMsg;
+        protected string           LastErrMsg_;
+        private   EConnectionState ConnectionState_;
     }
 }

@@ -6,18 +6,21 @@ using RLib.Base;
 
 namespace NeoJqData.Tests
 {
-    public class Tests
+    public class JQDataClient_Test
     {
          public IJQDataClient _Client;
 
-        [SetUp]
-        public void Setup()
+        [OneTimeSetUp]
+        public async Task Setup()
         {
             _Client = new JQDataClient("18621301957", "Hello@123");
 
-            bool ret = _Client.Init().Result;
+            bool ret = await _Client.connect();
             Assert.AreEqual(ret, true);
         }
+
+        [OneTimeTearDown]
+        public async Task TearDown() { }
 
         [Test]
         public async Task GetCandels()
@@ -36,7 +39,6 @@ namespace NeoJqData.Tests
         {
             var rtn = await  _Client.get_all_securities(ECodeType.futures);
             rtn.ToExcel("D:/futures.xls");
-
 
         }
 

@@ -5,6 +5,10 @@
 	
     purpose:
     modifiers:	JqData的client
+                jqdata 限制每日数据流量，不限制call频率
+
+		<!--key:oy2d6ut6pnuapxq765sanrhrb5ta2dnufab25ju3dhjcye-->
+		<!--dotnet nuget push NeoJqData.0.0.1.nupkg --api-key oy2d6ut6pnuapxq765sanrhrb5ta2dnufab25ju3dhjcye --source https://api.nuget.org/v3/index.json-->
 *********************************************************************/
 using System;
 using System.Collections.Generic;
@@ -17,27 +21,30 @@ namespace NeoJqData
     public partial class JQDataClient
     {
         public const string ApiUrl = "https://dataapi.joinquant.com/apis";
-
     }
 
     public interface IJQDataClient
     {
-
         string              ApiKey { get;}
-        int                 CallsPerMin { get; }                            // api calss per mit
-
-        int                 CallsInScope { get; }
-
         string              LastErrMsg { get; }
 
+#region Connection
+        EConnectionState    ConnectionState { get; }                        
+        Task<bool>          connect();
+#endregion
 
-        Task<bool>          Init();
-
+#region Calls limitaion
+        int                 CallsPerMin { get; }                            // api calss per mit
+        int                 CallsInScope { get; }
         Task<int>           get_query_count();
+#endregion
 
+#region Security info
         Task<List<Security>> get_all_securities(ECodeType type, DateTime? date = null);
         Task<SecurityInfo>  get_security_info(string code);
+#endregion
 
+#region hist data
         //code: 证券代码
         //count: 大于0的整数，表示获取bar的条数，不能超过5000
         //unit: bar的时间单位, 支持如下周期：1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M。其中m表示分钟，d表示天，w表示周，M表示月
@@ -60,9 +67,9 @@ namespace NeoJqData
         // startdate的参数名不对，无法正确指定，目前函数有问题
         Task<List<Tick>>     get_ticks(string code, DateTime? startDate = null, DateTime? endDate = null, int count = 5000, string fields ="None",bool skip = true , bool df = false);
         
+#endregion
 
-        #region 期货
-
+#region 期货
         //获取某期货品种在指定日期下的可交易合约标的列表
         //code: 期货合约品种，如 AG (白银)
         //date: 指定日期
@@ -74,8 +81,7 @@ namespace NeoJqData
         //date: 指定日期参数，获取历史上该日期的主力期货合约
         Task<string>        get_dominant_future(string code);
 
-
-        #endregion
+#endregion
 
     }
 }
